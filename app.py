@@ -1,20 +1,31 @@
 from flask import Flask, request, jsonify, send_from_directory, session
+from flask_cors import CORS
 import mysql.connector
+import bcrypt
+import re
+import os
 
-app = Flask(__name__)
-app.secret_key = 'portfoliohub123'
+# created by: bsit 2d - finals project
+# portfoliohub - portfolio builder
 
-# Connect to MySQL database
+app = Flask(__name__, static_folder='.')
+app.secret_key = 'portfoliohub2024'
+CORS(app, supports_credentials=True)
+
+# connect to database
+# uses environment variables when deployed on Railway
+# locally it falls back to XAMPP defaults
 def get_db():
-    connection = mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='portfoliohub'
+    conn = mysql.connector.connect(
+        host=os.environ.get('MYSQLHOST', 'localhost'),
+        user=os.environ.get('MYSQLUSER', 'root'),
+        password=os.environ.get('MYSQLPASSWORD', ''),
+        database=os.environ.get('MYSQLDATABASE', 'portfoliohub'),
+        port=int(os.environ.get('MYSQLPORT', 3306))
     )
-    return connection
+    return conn
 
-# Serve the main pages
+# serve the html pages
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
@@ -31,7 +42,11 @@ def portfolio():
 def static_files(filename):
     return send_from_directory('.', filename)
 
-# Sign up a new user
+
+# ======================
+#   SIGN UP / LOGIN
+# ======================
+
 @app.route('/api/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -40,39 +55,48 @@ def signup():
     email = data.get('email', '').strip()
     password = data.get('password', '')
 
+    # check if all fields are filled
     if not name or not username or not email or not password:
         return jsonify({'error': 'Please fill in all fields.'}), 400
 
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters.'}), 400
 
+    # username should only have letters, numbers, underscore
+    if not re.match(r'^[a-z0-9_]+$', username):
+        return jsonify({'error': 'Username can only have letters, numbers and underscore.'}), 400
+
+    # hash the password before saving
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
     try:
         db = get_db()
-        cursor = db.cursor(dictionary=True)
+        cur = db.cursor(dictionary=True)
 
-        # Check if username or email already exists
-        cursor.execute('SELECT id FROM users WHERE username = %s OR email = %s', (username, email))
-        existing = cursor.fetchone()
+        # check if username or email already exists
+        cur.execute('SELECT id FROM users WHERE username=%s OR email=%s', (username, email))
+        existing = cur.fetchone()
         if existing:
-            return jsonify({'error': 'Username or email already taken.'}), 400
+            return jsonify({'error': 'Username or email is already taken.'}), 400
 
-        # Insert new user into database
-        cursor.execute(
+        cur.execute(
             'INSERT INTO users (name, username, email, password) VALUES (%s, %s, %s, %s)',
-            (name, username, email, password)
+            (name, username, email, hashed)
         )
         db.commit()
 
-        # Save user id in session so they stay logged in
-        session['user_id'] = cursor.lastrowid
+        new_id = cur.lastrowid
+        session['user_id'] = new_id
 
-        db.close()
         return jsonify({'success': True, 'username': username})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Log in an existing user
+    finally:
+        db.close()
+
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -81,45 +105,45 @@ def login():
 
     try:
         db = get_db()
-        cursor = db.cursor(dictionary=True)
+        cur = db.cursor(dictionary=True)
 
-        # Find user by email and password
-        cursor.execute('SELECT * FROM users WHERE email = %s AND password = %s', (email, password))
-        user = cursor.fetchone()
+        cur.execute('SELECT * FROM users WHERE email=%s', (email,))
+        user = cur.fetchone()
 
-        if not user:
-            return jsonify({'error': 'Invalid email or password.'}), 401
+        # check if user exists and password is correct
+        if not user or not bcrypt.checkpw(password.encode(), user['password'].encode()):
+            return jsonify({'error': 'Wrong email or password.'}), 401
 
-        # Save user id in session
         session['user_id'] = user['id']
-
-        db.close()
         return jsonify({'success': True, 'username': user['username']})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Log out
+    finally:
+        db.close()
+
+
 @app.route('/api/logout', methods=['POST'])
 def logout():
     session.clear()
     return jsonify({'success': True})
 
-# Get current logged in user info
+
 @app.route('/api/me')
 def me():
+    # check if logged in
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
 
     try:
         db = get_db()
-        cursor = db.cursor(dictionary=True)
-        cursor.execute(
-            'SELECT id, name, username, email, bio, photo_url, github, linkedin, twitter, facebook, instagram FROM users WHERE id = %s',
+        cur = db.cursor(dictionary=True)
+        cur.execute(
+            'SELECT id, name, username, email, bio, photo_url, github, linkedin, twitter, facebook, instagram FROM users WHERE id=%s',
             (session['user_id'],)
         )
-        user = cursor.fetchone()
-        db.close()
+        user = cur.fetchone()
 
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -129,7 +153,14 @@ def me():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Update profile info
+    finally:
+        db.close()
+
+
+# ======================
+#   PROFILE UPDATE
+# ======================
+
 @app.route('/api/profile', methods=['PUT'])
 def update_profile():
     if 'user_id' not in session:
@@ -139,9 +170,12 @@ def update_profile():
 
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
-            'UPDATE users SET name=%s, bio=%s, photo_url=%s, github=%s, linkedin=%s, twitter=%s, facebook=%s, instagram=%s WHERE id=%s',
+        cur = db.cursor()
+
+        cur.execute(
+            '''UPDATE users SET name=%s, bio=%s, photo_url=%s,
+               github=%s, linkedin=%s, twitter=%s, facebook=%s, instagram=%s
+               WHERE id=%s''',
             (
                 data.get('name', ''),
                 data.get('bio', ''),
@@ -155,13 +189,19 @@ def update_profile():
             )
         )
         db.commit()
-        db.close()
         return jsonify({'success': True})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Get all projects of logged in user
+    finally:
+        db.close()
+
+
+# ======================
+#   PROJECTS CRUD
+# ======================
+
 @app.route('/api/projects')
 def get_projects():
     if 'user_id' not in session:
@@ -169,16 +209,18 @@ def get_projects():
 
     try:
         db = get_db()
-        cursor = db.cursor(dictionary=True)
-        cursor.execute('SELECT * FROM projects WHERE user_id = %s ORDER BY id DESC', (session['user_id'],))
-        projects = cursor.fetchall()
-        db.close()
+        cur = db.cursor(dictionary=True)
+        cur.execute('SELECT * FROM projects WHERE user_id=%s ORDER BY id DESC', (session['user_id'],))
+        projects = cur.fetchall()
         return jsonify(projects)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Add a new project
+    finally:
+        db.close()
+
+
 @app.route('/api/projects', methods=['POST'])
 def add_project():
     if 'user_id' not in session:
@@ -188,20 +230,28 @@ def add_project():
 
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
+        cur = db.cursor()
+        cur.execute(
             'INSERT INTO projects (user_id, title, description, status, link, tags) VALUES (%s, %s, %s, %s, %s, %s)',
-            (session['user_id'], data.get('title'), data.get('desc', ''), data.get('status', 'Planned'), data.get('link', ''), data.get('tags', ''))
+            (
+                session['user_id'],
+                data.get('title'),
+                data.get('desc', ''),
+                data.get('status', 'Planned'),
+                data.get('link', ''),
+                data.get('tags', '')
+            )
         )
         db.commit()
-        new_id = cursor.lastrowid
-        db.close()
-        return jsonify({'success': True, 'id': new_id})
+        return jsonify({'success': True, 'id': cur.lastrowid})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Update an existing project
+    finally:
+        db.close()
+
+
 @app.route('/api/projects/<int:pid>', methods=['PUT'])
 def update_project(pid):
     if 'user_id' not in session:
@@ -211,19 +261,29 @@ def update_project(pid):
 
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
+        cur = db.cursor()
+        cur.execute(
             'UPDATE projects SET title=%s, description=%s, status=%s, link=%s, tags=%s WHERE id=%s AND user_id=%s',
-            (data.get('title'), data.get('desc', ''), data.get('status', 'Planned'), data.get('link', ''), data.get('tags', ''), pid, session['user_id'])
+            (
+                data.get('title'),
+                data.get('desc', ''),
+                data.get('status', 'Planned'),
+                data.get('link', ''),
+                data.get('tags', ''),
+                pid,
+                session['user_id']
+            )
         )
         db.commit()
-        db.close()
         return jsonify({'success': True})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Delete a project
+    finally:
+        db.close()
+
+
 @app.route('/api/projects/<int:pid>', methods=['DELETE'])
 def delete_project(pid):
     if 'user_id' not in session:
@@ -231,16 +291,22 @@ def delete_project(pid):
 
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute('DELETE FROM projects WHERE id = %s AND user_id = %s', (pid, session['user_id']))
+        cur = db.cursor()
+        cur.execute('DELETE FROM projects WHERE id=%s AND user_id=%s', (pid, session['user_id']))
         db.commit()
-        db.close()
         return jsonify({'success': True})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Get all skills of logged in user
+    finally:
+        db.close()
+
+
+# ======================
+#   SKILLS CRUD
+# ======================
+
 @app.route('/api/skills')
 def get_skills():
     if 'user_id' not in session:
@@ -248,16 +314,18 @@ def get_skills():
 
     try:
         db = get_db()
-        cursor = db.cursor(dictionary=True)
-        cursor.execute('SELECT * FROM skills WHERE user_id = %s ORDER BY id DESC', (session['user_id'],))
-        skills = cursor.fetchall()
-        db.close()
+        cur = db.cursor(dictionary=True)
+        cur.execute('SELECT * FROM skills WHERE user_id=%s ORDER BY id DESC', (session['user_id'],))
+        skills = cur.fetchall()
         return jsonify(skills)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Add a new skill
+    finally:
+        db.close()
+
+
 @app.route('/api/skills', methods=['POST'])
 def add_skill():
     if 'user_id' not in session:
@@ -267,20 +335,21 @@ def add_skill():
 
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
+        cur = db.cursor()
+        cur.execute(
             'INSERT INTO skills (user_id, title, level, percent) VALUES (%s, %s, %s, %s)',
             (session['user_id'], data.get('title'), data.get('level', 'Beginner'), data.get('percent', 0))
         )
         db.commit()
-        new_id = cursor.lastrowid
-        db.close()
-        return jsonify({'success': True, 'id': new_id})
+        return jsonify({'success': True, 'id': cur.lastrowid})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Update an existing skill
+    finally:
+        db.close()
+
+
 @app.route('/api/skills/<int:sid>', methods=['PUT'])
 def update_skill(sid):
     if 'user_id' not in session:
@@ -290,19 +359,21 @@ def update_skill(sid):
 
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
+        cur = db.cursor()
+        cur.execute(
             'UPDATE skills SET title=%s, level=%s, percent=%s WHERE id=%s AND user_id=%s',
             (data.get('title'), data.get('level', 'Beginner'), data.get('percent', 0), sid, session['user_id'])
         )
         db.commit()
-        db.close()
         return jsonify({'success': True})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Delete a skill
+    finally:
+        db.close()
+
+
 @app.route('/api/skills/<int:sid>', methods=['DELETE'])
 def delete_skill(sid):
     if 'user_id' not in session:
@@ -310,46 +381,54 @@ def delete_skill(sid):
 
     try:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute('DELETE FROM skills WHERE id = %s AND user_id = %s', (sid, session['user_id']))
+        cur = db.cursor()
+        cur.execute('DELETE FROM skills WHERE id=%s AND user_id=%s', (sid, session['user_id']))
         db.commit()
-        db.close()
         return jsonify({'success': True})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Public portfolio page - no login needed
+    finally:
+        db.close()
+
+
+# ======================
+#   PUBLIC PORTFOLIO
+#   (no login needed)
+# ======================
+
 @app.route('/api/portfolio/<username>')
 def public_portfolio(username):
     try:
         db = get_db()
-        cursor = db.cursor(dictionary=True)
+        cur = db.cursor(dictionary=True)
 
-        # Get user info
-        cursor.execute(
-            'SELECT id, name, username, bio, photo_url, github, linkedin, twitter, facebook, instagram FROM users WHERE username = %s',
+        cur.execute(
+            'SELECT id, name, username, bio, photo_url, github, linkedin, twitter, facebook, instagram FROM users WHERE username=%s',
             (username,)
         )
-        user = cursor.fetchone()
+        user = cur.fetchone()
 
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
-        # Get their projects
-        cursor.execute('SELECT * FROM projects WHERE user_id = %s ORDER BY id DESC', (user['id'],))
-        user['projects'] = cursor.fetchall()
+        uid = user['id']
 
-        # Get their skills
-        cursor.execute('SELECT * FROM skills WHERE user_id = %s ORDER BY id DESC', (user['id'],))
-        user['skills'] = cursor.fetchall()
+        cur.execute('SELECT * FROM projects WHERE user_id=%s ORDER BY id DESC', (uid,))
+        user['projects'] = cur.fetchall()
 
-        db.close()
+        cur.execute('SELECT * FROM skills WHERE user_id=%s ORDER BY id DESC', (uid,))
+        user['skills'] = cur.fetchall()
+
         return jsonify(user)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+    finally:
+        db.close()
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True, port=5000)
