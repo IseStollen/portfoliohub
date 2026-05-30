@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — PortfolioHub</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-logo">
+      <div class="logo-icon"><i data-lucide="briefcase" style="width:15px;height:15px;color:#000;"></i></div>
+      Portfolio<span class="logo-dot">Hub</span>
+    </div>
+    <div class="nav-right">
+      <span id="nav-tag" class="nav-tag"></span>
+      <a id="view-link" href="#" target="_blank" class="btn btn-ghost btn-sm">
+        <i data-lucide="eye" style="width:14px;height:14px;"></i> My Portfolio
+      </a>
+    </div>
+  </nav>
+
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <div class="sidebar-section-label">My Portfolio</div>
+      <button class="sidebar-item active" onclick="showTab('profile', this)">
+        <i data-lucide="user-circle" class="item-icon-svg"></i> Profile
+      </button>
+      <button class="sidebar-item" onclick="showTab('projects', this)">
+        <i data-lucide="folder-open" class="item-icon-svg"></i> Projects
+      </button>
+      <button class="sidebar-item" onclick="showTab('skills', this)">
+        <i data-lucide="zap" class="item-icon-svg"></i> Skills
+      </button>
+
+      <div class="sidebar-bottom">
+        <div class="user-pill" id="logout-pill" onclick="logout()">
+          <div class="user-avatar" id="sb-avatar">?</div>
+          <div class="user-info">
+            <div class="user-name" id="sb-name">—</div>
+            <div class="user-handle" id="sb-handle"></div>
+          </div>
+          <i data-lucide="log-out" class="logout-icon" title="Log out" style="width:15px;height:15px;"></i>
+        </div>
+      </div>
+    </aside>
+
+    <main class="dash-main">
+
+      <!-- PROFILE TAB -->
+      <div id="tab-profile" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i data-lucide="user-circle" style="width:16px;height:16px;color:var(--yellow);"></i>
+              Profile Info
+            </div>
+            <button id="save-profile-btn" class="btn btn-ghost btn-sm save-btn-idle" onclick="saveProfile()" disabled>
+              <i data-lucide="save" style="width:14px;height:14px;"></i> Save Changes
+            </button>
+          </div>
+
+          <!-- Preview card -->
+          <div class="profile-preview-card">
+            <div class="user-avatar" id="profile-preview" style="width:56px;height:56px;font-size:1.4rem;border:2px solid var(--yellow);">?</div>
+            <div>
+              <div style="font-weight:600;font-size:0.95rem;" id="profile-name-preview">Your Name</div>
+              <div style="font-size:0.8rem;color:var(--text-muted);" id="profile-handle-preview">@username</div>
+            </div>
+          </div>
+
+          <div class="profile-grid">
+            <div class="form-group">
+              <label><i data-lucide="user" style="width:12px;height:12px;"></i> Full Name</label>
+              <input id="p-name" type="text" placeholder="Juan dela Cruz" oninput="markDirty();updatePreview()"/>
+            </div>
+            <div class="form-group">
+              <label><i data-lucide="at-sign" style="width:12px;height:12px;"></i> Username</label>
+              <input id="p-username" type="text" disabled style="opacity:0.5;cursor:not-allowed;"/>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label><i data-lucide="align-left" style="width:12px;height:12px;"></i> Bio</label>
+              <textarea id="p-bio" placeholder="Tell people about yourself..." oninput="markDirty()"></textarea>
+            </div>
+
+            <!-- Photo upload -->
+            <div class="form-group" style="grid-column:1/-1;">
+              <label><i data-lucide="image" style="width:12px;height:12px;"></i> Profile Photo</label>
+              <div class="photo-upload-row">
+                <input id="p-photo-url" type="text" placeholder="https://i.imgur.com/yourphoto.jpg" oninput="markDirty();updatePreview()" style="flex:1;"/>
+                <span class="photo-or">or</span>
+                <label class="btn btn-ghost btn-sm photo-upload-label" for="p-photo-file">
+                  <i data-lucide="upload" style="width:13px;height:13px;"></i> Upload File
+                </label>
+                <input id="p-photo-file" type="file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none;" onchange="handlePhotoUpload(this)"/>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Paste a photo URL or upload a PNG/JPG directly.</div>
+            </div>
+
+            <!-- Social links -->
+            <div class="form-group">
+              <label><i data-lucide="github" style="width:12px;height:12px;"></i> GitHub URL</label>
+              <input id="p-github" type="text" placeholder="https://github.com/..." oninput="markDirty()"/>
+            </div>
+            <div class="form-group">
+              <label><i data-lucide="linkedin" style="width:12px;height:12px;"></i> LinkedIn URL</label>
+              <input id="p-linkedin" type="text" placeholder="https://linkedin.com/in/..." oninput="markDirty()"/>
+            </div>
+            <div class="form-group">
+              <label><i data-lucide="twitter" style="width:12px;height:12px;"></i> Twitter / X URL</label>
+              <input id="p-twitter" type="text" placeholder="https://twitter.com/..." oninput="markDirty()"/>
+            </div>
+            <div class="form-group">
+              <label><i data-lucide="facebook" style="width:12px;height:12px;"></i> Facebook URL</label>
+              <input id="p-facebook" type="text" placeholder="https://facebook.com/..." oninput="markDirty()"/>
+            </div>
+            <div class="form-group">
+              <label><i data-lucide="instagram" style="width:12px;height:12px;"></i> Instagram URL</label>
+              <input id="p-instagram" type="text" placeholder="https://instagram.com/..." oninput="markDirty()"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROJECTS TAB -->
+      <div id="tab-projects" class="tab-content hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i data-lucide="folder-open" style="width:16px;height:16px;color:var(--yellow);"></i>
+              Projects
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('project')">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Project
+            </button>
+          </div>
+          <div id="projects-list"><p class="empty-msg">Loading...</p></div>
+        </div>
+      </div>
+
+      <!-- SKILLS TAB -->
+      <div id="tab-skills" class="tab-content hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i data-lucide="zap" style="width:16px;height:16px;color:var(--yellow);"></i>
+              Skills
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('skill')">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Skill
+            </button>
+          </div>
+          <div id="skills-list"><p class="empty-msg">Loading...</p></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModalOutside(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Add</h3>
+        <button class="close-btn" onclick="closeModal()">
+          <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .item-icon-svg { width:16px; height:16px; flex-shrink:0; }
+    .profile-preview-card {
+      display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;
+      padding:1rem; background:var(--bg-surface); border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+    }
+    .panel-title { display:flex; align-items:center; gap:8px; }
+    .panel-title::before { display:none; }
+    .panel-title-bar { display:flex; align-items:center; gap:8px; }
+  </style>
+
+  <script>
+    let currentType = '';
+    let editingId   = null;
+    let currentUser = null;
+
+    async function init() {
+      try {
+        const res  = await fetch('/api/me', {credentials:'include'});
+        if (!res.ok) { window.location.href = 'index.html'; return; }
+        currentUser = await res.json();
+        loadUserData(currentUser);
+        loadProjects();
+        loadSkills();
+      } catch(e) {
+        window.location.href = 'index.html';
+      }
+    }
+
+    function loadUserData(d) {
+      document.getElementById('nav-tag').textContent             = '@' + d.username;
+      document.getElementById('view-link').href                  = `portfolio.html?u=${d.username}`;
+      document.getElementById('sb-name').textContent             = d.name || d.username;
+      document.getElementById('sb-handle').textContent           = '@' + d.username;
+      document.getElementById('p-name').value                    = d.name      || '';
+      document.getElementById('p-username').value                = d.username  || '';
+      document.getElementById('p-bio').value                     = d.bio       || '';
+      document.getElementById('p-photo-url').value               = d.photo_url || '';
+      document.getElementById('p-github').value                  = d.github    || '';
+      document.getElementById('p-linkedin').value                = d.linkedin  || '';
+      document.getElementById('p-twitter').value                 = d.twitter   || '';
+      document.getElementById('p-facebook').value                = d.facebook  || '';
+      document.getElementById('p-instagram').value               = d.instagram || '';
+      document.getElementById('profile-name-preview').textContent   = d.name || d.username;
+      document.getElementById('profile-handle-preview').textContent = '@' + d.username;
+      updateAvatarEl('sb-avatar', d.name, d.photo_url);
+      updateAvatarEl('profile-preview', d.name, d.photo_url);
+      lucide.createIcons();
+    }
+
+    function updateAvatarEl(id, name, photo) {
+      const el = document.getElementById(id);
+      if (photo) {
+        el.innerHTML = `<img src="${photo}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+      } else {
+        el.textContent = (name||'?').charAt(0).toUpperCase();
+      }
+    }
+
+    function updatePreview() {
+      const name  = document.getElementById('p-name').value || 'Your Name';
+      const photo = document.getElementById('p-photo-url').value;
+      document.getElementById('profile-name-preview').textContent = name;
+      updateAvatarEl('profile-preview', name, photo);
+    }
+
+    function handlePhotoUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('p-photo-url').value = e.target.result;
+        updateAvatarEl('profile-preview', document.getElementById('p-name').value, e.target.result);
+        markDirty();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function markDirty() {
+      const btn = document.getElementById('save-profile-btn');
+      btn.disabled = false;
+      btn.classList.remove('save-btn-idle','save-btn-saved');
+      btn.classList.add('save-btn-dirty');
+      btn.innerHTML = '<i data-lucide="save" style="width:14px;height:14px;"></i> Save Changes';
+      lucide.createIcons();
+    }
+
+    function resetSaveBtn() {
+      const btn = document.getElementById('save-profile-btn');
+      btn.disabled = true;
+      btn.classList.remove('save-btn-dirty','save-btn-saved');
+      btn.classList.add('save-btn-idle');
+      btn.innerHTML = '<i data-lucide="check" style="width:14px;height:14px;"></i> Saved';
+      lucide.createIcons();
+      setTimeout(() => {
+        if (btn.classList.contains('save-btn-idle')) {
+          btn.innerHTML = '<i data-lucide="save" style="width:14px;height:14px;"></i> Save Changes';
+          lucide.createIcons();
+        }
+      }, 2500);
+    }
+
+    async function saveProfile() {
+      const btn = document.getElementById('save-profile-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader" style="width:14px;height:14px;"></i> Saving…';
+      lucide.createIcons();
+      try {
+        const photoVal = document.getElementById('p-photo-url').value.trim();
+        const res = await fetch('/api/profile', {
+          method:'PUT', credentials:'include',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            name:      document.getElementById('p-name').value.trim(),
+            bio:       document.getElementById('p-bio').value.trim(),
+            photo_url: photoVal,
+            github:    document.getElementById('p-github').value.trim(),
+            linkedin:  document.getElementById('p-linkedin').value.trim(),
+            twitter:   document.getElementById('p-twitter').value.trim(),
+            facebook:  document.getElementById('p-facebook').value.trim(),
+            instagram: document.getElementById('p-instagram').value.trim(),
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        updateAvatarEl('sb-avatar', document.getElementById('p-name').value.trim(), photoVal);
+        resetSaveBtn();
+        showToast('✅ Profile saved!');
+      } catch(e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="save" style="width:14px;height:14px;"></i> Save Changes';
+        lucide.createIcons();
+        showToast('❌ Save failed: ' + e.message);
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/logout', {method:'POST', credentials:'include'});
+      window.location.href = 'index.html';
+    }
+
+    function showTab(tab, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+      document.querySelectorAll('.sidebar-item').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+      btn.classList.add('active');
+    }
+
+    async function loadProjects() {
+      const res  = await fetch('/api/projects', {credentials:'include'});
+      const data = await res.json();
+      const list = document.getElementById('projects-list');
+      if (!data.length) {
+        list.innerHTML = `<p class="empty-msg"><i data-lucide="folder" style="width:32px;height:32px;display:block;margin:0 auto 0.5rem;opacity:0.3;"></i>No projects yet — add your first one!</p>`;
+        lucide.createIcons();
+        return;
+      }
+      list.innerHTML = data.map(d => `
+        <div class="card">
+          <div class="card-top">
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <div class="card-icon-box"><i data-lucide="folder-open" style="width:16px;height:16px;color:var(--yellow);"></i></div>
+              <div><h3>${esc(d.title)}</h3><p>${esc(d.description)}</p></div>
+            </div>
+            <span class="badge ${bc(d.status)}">${d.status||''}</span>
+          </div>
+          ${d.tags ? `<div class="tags">${d.tags.split(',').map(t=>`<span class="tag">${t.trim()}</span>`).join('')}</div>` : ''}
+          ${d.link ? `<p style="margin-top:6px;font-size:0.78rem;"><a href="${d.link}" target="_blank" style="color:var(--yellow);display:inline-flex;align-items:center;gap:4px;"><i data-lucide="external-link" style="width:12px;height:12px;"></i> View Project</a></p>` : ''}
+          <div class="card-actions">
+            <button class="btn btn-ghost btn-sm" onclick='openModal("project",${d.id},${JSON.stringify(d)})'>
+              <i data-lucide="pencil" style="width:12px;height:12px;"></i> Edit
+            </button>
+            <button class="btn btn-danger btn-sm" onclick='deleteItem("project",${d.id})'>
+              <i data-lucide="trash-2" style="width:12px;height:12px;"></i> Delete
+            </button>
+          </div>
+        </div>`).join('');
+      lucide.createIcons();
+    }
+
+    async function loadSkills() {
+      const res  = await fetch('/api/skills', {credentials:'include'});
+      const data = await res.json();
+      const list = document.getElementById('skills-list');
+      if (!data.length) {
+        list.innerHTML = `<p class="empty-msg"><i data-lucide="zap" style="width:32px;height:32px;display:block;margin:0 auto 0.5rem;opacity:0.3;"></i>No skills yet — show what you know!</p>`;
+        lucide.createIcons();
+        return;
+      }
+      list.innerHTML = data.map(d => `
+        <div class="card">
+          <div class="card-top">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="card-icon-box"><i data-lucide="code-2" style="width:16px;height:16px;color:var(--yellow);"></i></div>
+              <div><h3>${esc(d.title)}</h3><p>${d.level||''}</p></div>
+            </div>
+            <strong style="color:var(--yellow)">${d.percent||0}%</strong>
+          </div>
+          <div class="skill-bar-wrap"><div class="skill-bar" style="width:${Math.min(d.percent||0,100)}%"></div></div>
+          <div class="card-actions">
+            <button class="btn btn-ghost btn-sm" onclick='openModal("skill",${d.id},${JSON.stringify(d)})'>
+              <i data-lucide="pencil" style="width:12px;height:12px;"></i> Edit
+            </button>
+            <button class="btn btn-danger btn-sm" onclick='deleteItem("skill",${d.id})'>
+              <i data-lucide="trash-2" style="width:12px;height:12px;"></i> Delete
+            </button>
+          </div>
+        </div>`).join('');
+      lucide.createIcons();
+    }
+
+    function openModal(type, id=null, data={}) {
+      currentType = type; editingId = id;
+      document.getElementById('modal-title').textContent = (id?'Edit':'Add') + ' ' + cap(type);
+      if (type === 'project') {
+        document.getElementById('modal-body').innerHTML = `
+          <div class="form-group"><label>Title *</label>
+            <input id="f-title" type="text" placeholder="e.g. Todo App" value="${esc(data.title)}"/></div>
+          <div class="form-group"><label>Description</label>
+            <textarea id="f-desc" placeholder="What does this project do?">${esc(data.description)}</textarea></div>
+          <div class="form-row">
+            <div class="form-group"><label>Status</label>
+              <select id="f-status">
+                <option ${sel(data.status,'Completed')}>Completed</option>
+                <option ${sel(data.status,'In Progress')}>In Progress</option>
+                <option ${sel(data.status,'Planned')}>Planned</option>
+              </select></div>
+            <div class="form-group"><label>Link</label>
+              <input id="f-link" type="text" placeholder="https://..." value="${esc(data.link)}"/></div>
+          </div>
+          <div class="form-group"><label>Tech Tags (comma-separated)</label>
+            <input id="f-tags" type="text" placeholder="HTML, CSS, JS" value="${esc(data.tags)}"/></div>
+          <div class="form-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveItem()">
+              <i data-lucide="save" style="width:14px;height:14px;"></i> Save
+            </button>
+          </div>`;
+      } else {
+        document.getElementById('modal-body').innerHTML = `
+          <div class="form-group"><label>Skill Name *</label>
+            <input id="f-title" type="text" placeholder="e.g. JavaScript" value="${esc(data.title)}"/></div>
+          <div class="form-row">
+            <div class="form-group"><label>Level</label>
+              <select id="f-level">
+                <option ${sel(data.level,'Beginner')}>Beginner</option>
+                <option ${sel(data.level,'Intermediate')}>Intermediate</option>
+                <option ${sel(data.level,'Advanced')}>Advanced</option>
+              </select></div>
+            <div class="form-group"><label>Proficiency % (0–100)</label>
+              <input id="f-percent" type="number" min="0" max="100" value="${data.percent||0}"/></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveItem()">
+              <i data-lucide="save" style="width:14px;height:14px;"></i> Save
+            </button>
+          </div>`;
+      }
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+      editingId = null; currentType = '';
+    }
+    function closeModalOutside(e) { if (e.target.id==='modal-overlay') closeModal(); }
+
+    async function saveItem() {
+      const title = document.getElementById('f-title').value.trim();
+      if (!title) { showToast('❌ Title is required!'); return; }
+      let body = { title };
+      if (currentType === 'project') {
+        body.desc   = document.getElementById('f-desc').value.trim();
+        body.status = document.getElementById('f-status').value;
+        body.link   = document.getElementById('f-link').value.trim();
+        body.tags   = document.getElementById('f-tags').value.trim();
+      } else {
+        body.level   = document.getElementById('f-level').value;
+        body.percent = parseInt(document.getElementById('f-percent').value)||0;
+      }
+      const url    = editingId ? `/api/${currentType}s/${editingId}` : `/api/${currentType}s`;
+      const method = editingId ? 'PUT' : 'POST';
+      const res    = await fetch(url, {
+        method, credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        closeModal();
+        if (currentType==='project') loadProjects(); else loadSkills();
+        showToast('✅ Saved!');
+      } else {
+        showToast('❌ Failed to save.');
+      }
+    }
+
+    async function deleteItem(type, id) {
+      if (!confirm('Delete this item?')) return;
+      const res = await fetch(`/api/${type}s/${id}`, {method:'DELETE', credentials:'include'});
+      if (res.ok) {
+        if (type==='project') loadProjects(); else loadSkills();
+        showToast('🗑 Deleted.');
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.createElement('div');
+      t.textContent = msg;
+      Object.assign(t.style, {
+        position:'fixed', bottom:'1.5rem', right:'1.5rem', zIndex:'999',
+        background:'var(--bg-elevated)', color:'var(--text-primary)',
+        border:'1px solid var(--border-mid)', borderRadius:'10px',
+        padding:'10px 18px', fontSize:'0.875rem', fontWeight:'500',
+        boxShadow:'0 8px 24px rgba(0,0,0,0.4)', animation:'fadeIn 0.2s ease'
+      });
+      document.body.appendChild(t);
+      setTimeout(()=>t.remove(), 2500);
+    }
+
+    function bc(s) { return s==='Completed'?'badge-green':s==='In Progress'?'badge-blue':s==='Planned'?'badge-yellow':'badge-gray'; }
+    function cap(s) { return s.charAt(0).toUpperCase()+s.slice(1); }
+    function esc(v) { return v ? String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;') : ''; }
+    function sel(val,opt) { return val===opt?'selected':''; }
+
+    init();
+  </script>
+</body>
+</html>

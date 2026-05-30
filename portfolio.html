@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Portfolio — PortfolioHub</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a class="nav-logo" href="index.html">
+      <div class="logo-icon"><i data-lucide="briefcase" style="width:15px;height:15px;color:#000;"></i></div>
+      Portfolio<span class="logo-dot">Hub</span>
+    </a>
+    <div class="nav-right">
+      <span id="nav-tag" class="nav-tag"></span>
+      <a href="index.html" class="btn btn-primary btn-sm">
+        <i data-lucide="plus" style="width:13px;height:13px;"></i> Create Yours
+      </a>
+    </div>
+  </nav>
+
+  <!-- 404 -->
+  <div id="not-found" class="hidden" style="text-align:center;padding:6rem 1rem;">
+    <div style="margin-bottom:1rem;opacity:0.3;"><i data-lucide="search" style="width:64px;height:64px;"></i></div>
+    <h2 style="font-family:'Rajdhani',sans-serif;font-size:2rem;margin-bottom:0.5rem;">Portfolio not found</h2>
+    <p style="color:var(--text-muted);margin-bottom:1.5rem;">That username doesn't exist yet.</p>
+    <a href="index.html" class="btn btn-primary">
+      <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Go Home
+    </a>
+  </div>
+
+  <!-- PORTFOLIO -->
+  <div id="portfolio-content" class="hidden">
+    <div class="pf-hero">
+      <div class="container pf-hero-inner">
+        <div class="pf-avatar" id="pf-avatar">?</div>
+        <div>
+          <h1 class="pf-name" id="pf-name"></h1>
+          <p class="pf-bio" id="pf-bio"></p>
+          <div class="pf-social" id="pf-social"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container pf-content">
+      <div id="pf-projects-wrap">
+        <p class="pf-section-title">
+          <i data-lucide="folder-open" style="width:15px;height:15px;color:var(--yellow);"></i>
+          Projects
+        </p>
+        <div id="pf-projects"><p class="empty-msg">No projects yet.</p></div>
+      </div>
+
+      <div style="margin-top:2.5rem;" id="pf-skills-wrap">
+        <p class="pf-section-title">
+          <i data-lucide="zap" style="width:15px;height:15px;color:var(--yellow);"></i>
+          Skills
+        </p>
+        <div id="pf-skills" class="skills-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const username = new URLSearchParams(window.location.search).get('u');
+    if (!username) {
+      document.getElementById('not-found').classList.remove('hidden');
+      lucide.createIcons();
+    } else {
+      loadPortfolio(username);
+    }
+
+    async function loadPortfolio(username) {
+      try {
+        const res = await fetch(`/api/portfolio/${username}`);
+        if (!res.ok) {
+          document.getElementById('not-found').classList.remove('hidden');
+          lucide.createIcons();
+          return;
+        }
+        const u = await res.json();
+
+        document.title = `${u.name || u.username} — PortfolioHub`;
+        document.getElementById('nav-tag').textContent = '@' + u.username;
+        document.getElementById('pf-name').textContent = u.name || u.username;
+        document.getElementById('pf-bio').textContent  = u.bio  || '';
+
+        const avatarEl = document.getElementById('pf-avatar');
+        if (u.photo_url) {
+          avatarEl.innerHTML = `<img src="${u.photo_url}" alt="${u.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+        } else {
+          avatarEl.textContent = (u.name||u.username).charAt(0).toUpperCase();
+        }
+
+        const socEl = document.getElementById('pf-social');
+        if (u.github)    socEl.innerHTML += `<a href="${u.github}"    target="_blank" class="social-chip"><i data-lucide="github"    style="width:13px;height:13px;"></i> GitHub</a>`;
+        if (u.linkedin)  socEl.innerHTML += `<a href="${u.linkedin}"  target="_blank" class="social-chip"><i data-lucide="linkedin"  style="width:13px;height:13px;"></i> LinkedIn</a>`;
+        if (u.twitter)   socEl.innerHTML += `<a href="${u.twitter}"   target="_blank" class="social-chip"><i data-lucide="twitter"   style="width:13px;height:13px;"></i> Twitter</a>`;
+        if (u.facebook)  socEl.innerHTML += `<a href="${u.facebook}"  target="_blank" class="social-chip"><i data-lucide="facebook"  style="width:13px;height:13px;"></i> Facebook</a>`;
+        if (u.instagram) socEl.innerHTML += `<a href="${u.instagram}" target="_blank" class="social-chip"><i data-lucide="instagram" style="width:13px;height:13px;"></i> Instagram</a>`;
+
+        const projEl = document.getElementById('pf-projects');
+        if (!u.projects.length) {
+          projEl.innerHTML = '<p class="empty-msg">No projects added yet.</p>';
+        } else {
+          projEl.innerHTML = u.projects.map(p => `
+            <div class="card">
+              <div class="card-top">
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                  <div class="card-icon-box"><i data-lucide="folder-open" style="width:16px;height:16px;color:var(--yellow);"></i></div>
+                  <div><h3>${p.title}</h3><p>${p.description||''}</p></div>
+                </div>
+                <span class="badge ${bc(p.status)}">${p.status||''}</span>
+              </div>
+              ${p.tags ? `<div class="tags">${p.tags.split(',').map(t=>`<span class="tag">${t.trim()}</span>`).join('')}</div>` : ''}
+              ${p.link ? `<p style="margin-top:8px;font-size:0.8rem;"><a href="${p.link}" target="_blank" style="color:var(--yellow);font-weight:600;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="external-link" style="width:12px;height:12px;"></i> View Project</a></p>` : ''}
+            </div>`).join('');
+        }
+
+        const skillEl = document.getElementById('pf-skills');
+        if (!u.skills.length) {
+          skillEl.outerHTML = '<p class="empty-msg">No skills added yet.</p>';
+        } else {
+          skillEl.innerHTML = u.skills.map(s => `
+            <div class="card">
+              <div class="card-top">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div class="card-icon-box"><i data-lucide="code-2" style="width:16px;height:16px;color:var(--yellow);"></i></div>
+                  <div><h3>${s.title}</h3><p>${s.level||''}</p></div>
+                </div>
+                <strong style="color:var(--yellow);font-size:0.95rem;">${s.percent||0}%</strong>
+              </div>
+              <div class="skill-bar-wrap">
+                <div class="skill-bar" style="width:${Math.min(s.percent||0,100)}%"></div>
+              </div>
+            </div>`).join('');
+        }
+
+        document.getElementById('portfolio-content').classList.remove('hidden');
+        lucide.createIcons();
+      } catch(e) {
+        document.getElementById('not-found').classList.remove('hidden');
+        lucide.createIcons();
+      }
+    }
+
+    function bc(s) {
+      return s==='Completed'?'badge-green':s==='In Progress'?'badge-blue':s==='Planned'?'badge-yellow':'badge-gray';
+    }
+  </script>
+</body>
+</html>

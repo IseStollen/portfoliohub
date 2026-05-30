@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PortfolioHub — Build Your Portfolio</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body class="auth-page">
+
+  <div class="auth-wrapper">
+
+    <!-- HERO LEFT -->
+    <div class="auth-hero">
+      <div class="auth-eyebrow">
+        <i data-lucide="zap" style="width:13px;height:13px;"></i>
+        Free · No credit card needed
+      </div>
+      <h1>Your work.<br/><span>Your stage.</span></h1>
+      <p>Build a beautiful shareable portfolio in minutes. Show the world what you've built — all in one link.</p>
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i data-lucide="folder-open" style="width:15px;height:15px;"></i></div>
+          Add projects, skills &amp; contacts
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i data-lucide="link" style="width:15px;height:15px;"></i></div>
+          Get a unique shareable link
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i data-lucide="layout-dashboard" style="width:15px;height:15px;"></i></div>
+          Update anytime from your dashboard
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTH CARD -->
+    <div class="auth-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.5rem;">
+        <div class="nav-logo">
+          <div class="logo-icon"><i data-lucide="briefcase" style="width:15px;height:15px;color:#000;"></i></div>
+          Portfolio<span class="logo-dot">Hub</span>
+        </div>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuth('login')">Log In</button>
+        <button class="auth-tab" onclick="switchAuth('signup')">Sign Up</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="login-form">
+        <div class="form-group">
+          <label>Email</label>
+          <div class="input-icon-wrap">
+            <i data-lucide="mail" class="input-icon"></i>
+            <input id="login-email" type="email" placeholder="you@email.com" style="padding-left:2.2rem;"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-icon-wrap">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input id="login-password" type="password" placeholder="••••••••" style="padding-left:2.2rem;"/>
+          </div>
+        </div>
+        <div id="login-error" class="error-msg hidden"></div>
+        <button id="login-btn" class="btn btn-primary btn-full" onclick="login()">
+          <i data-lucide="log-in" style="width:16px;height:16px;"></i> Log In
+        </button>
+      </div>
+
+      <!-- SIGNUP -->
+      <div id="signup-form" class="hidden">
+        <div class="form-group">
+          <label>Full Name</label>
+          <div class="input-icon-wrap">
+            <i data-lucide="user" class="input-icon"></i>
+            <input id="signup-name" type="text" placeholder="Juan dela Cruz" style="padding-left:2.2rem;"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Username <span style="font-size:0.72rem;color:var(--text-muted);text-transform:none;font-weight:400;">(your portfolio link)</span></label>
+          <div class="input-icon-wrap">
+            <i data-lucide="at-sign" class="input-icon"></i>
+            <input id="signup-username" type="text" placeholder="juandelacruz" style="padding-left:2.2rem;" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <div class="input-icon-wrap">
+            <i data-lucide="mail" class="input-icon"></i>
+            <input id="signup-email" type="email" placeholder="you@email.com" style="padding-left:2.2rem;"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-icon-wrap">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input id="signup-password" type="password" placeholder="Min 6 characters" style="padding-left:2.2rem;"/>
+          </div>
+        </div>
+        <div id="signup-error" class="error-msg hidden"></div>
+        <div id="signup-success" class="success-msg hidden">✅ Account created! Redirecting…</div>
+        <button id="signup-btn" class="btn btn-primary btn-full" onclick="signup()">
+          <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Create Account
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    fetch('/api/me', {credentials:'include'})
+      .then(r => r.ok ? window.location.href='dashboard.html' : null)
+      .catch(()=>{});
+
+    function switchAuth(tab) {
+      document.querySelectorAll('.auth-tab').forEach((t,i) =>
+        t.classList.toggle('active', (tab==='login'&&i===0)||(tab==='signup'&&i===1)));
+      document.getElementById('login-form').classList.toggle('hidden', tab!=='login');
+      document.getElementById('signup-form').classList.toggle('hidden', tab!=='signup');
+    }
+
+    async function login() {
+      const email = document.getElementById('login-email').value.trim();
+      const pass  = document.getElementById('login-password').value;
+      const errEl = document.getElementById('login-error');
+      const btn   = document.getElementById('login-btn');
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader" style="width:16px;height:16px;"></i> Logging in…';
+      lucide.createIcons();
+      try {
+        const res  = await fetch('/api/login', {
+          method:'POST', credentials:'include',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({email, password:pass})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        window.location.href = 'dashboard.html';
+      } catch(e) {
+        errEl.textContent = e.message || 'Invalid email or password.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="log-in" style="width:16px;height:16px;"></i> Log In';
+        lucide.createIcons();
+      }
+    }
+
+    async function signup() {
+      const name     = document.getElementById('signup-name').value.trim();
+      const username = document.getElementById('signup-username').value.trim().toLowerCase();
+      const email    = document.getElementById('signup-email').value.trim();
+      const pass     = document.getElementById('signup-password').value;
+      const errEl    = document.getElementById('signup-error');
+      const succEl   = document.getElementById('signup-success');
+      const btn      = document.getElementById('signup-btn');
+      errEl.classList.add('hidden');
+      succEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader" style="width:16px;height:16px;"></i> Please wait…';
+      lucide.createIcons();
+      try {
+        const res  = await fetch('/api/signup', {
+          method:'POST', credentials:'include',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({name, username, email, password:pass})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        btn.innerHTML = '✅ Account Created!';
+        succEl.classList.remove('hidden');
+        setTimeout(() => window.location.href = 'dashboard.html', 1000);
+      } catch(e) {
+        errEl.textContent = e.message || 'Signup failed. Try again.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="user-plus" style="width:16px;height:16px;"></i> Create Account';
+        lucide.createIcons();
+      }
+    }
+  </script>
+</body>
+</html>
